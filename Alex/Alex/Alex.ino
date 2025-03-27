@@ -58,26 +58,9 @@ unsigned long deltaDist;
 unsigned long newDist;
 unsigned long deltaTicks;
 unsigned long targetTicks;
-unsigned long targetRightTicks;
-unsigned long targetLeftTicks;
 
-
-void fforward(float dist, float speed) {
-  if(dist > 0)
-    deltaDist = dist;
-  else
-    deltaDist=9999999;
-  newDist = forwardDist + deltaDist;
-  forward(dist, speed);
-}
-
-void reverse(float dist, float speed) {
-  if(dist > 0)
-    deltaDist = dist;
-  else
-    deltaDist=9999999;
-  newDist = reverseDist + deltaDist;
-  backward(dist, speed);
+void reverse(float ang, float speed) {
+  backward(ang, speed);
 }
 
 unsigned long computeDeltaTicks(float ang){
@@ -406,7 +389,7 @@ void handleCommand(TPacket *command)
     // For movement commands, param[0] = distance, param[1] = speed.
     case COMMAND_FORWARD:
         sendOK();
-        fforward((double) command->params[0], (float) command->params[1]);
+        forward((double) command->params[0], (float) command->params[1]);
       break;
 
     case COMMAND_REVERSE:
@@ -549,7 +532,6 @@ void loop() {
         newDist=0;
         stop();
       }
-      
     }
     else
       if(dir == BACKWARD)
