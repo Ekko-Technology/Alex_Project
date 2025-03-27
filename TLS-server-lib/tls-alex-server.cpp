@@ -1,8 +1,8 @@
 #include "make_tls_server.h"
 #include "tls_common_lib.h"
-#include "netconstants.h"
-#include "constants.h"
-#include "packet.h"
+#include "../TLS-client-lib/netconstants.h"
+#include "../Alex/constants.h"
+#include "../Alex/packet.h"
 #include "serial.h"
 #include "serialize.h"
 
@@ -228,32 +228,36 @@ void handleCommand(void *conn, const char *buffer)
 	
 	switch(cmd)
 	{
-		case 'f':
-		case 'F':
+		case 'w':
+		case 'W':
 			commandPacket.command = COMMAND_FORWARD;
-			uartSendPacket(&commandPacket);
-			break;
-
-		case 'b':
-		case 'B':
-			commandPacket.command = COMMAND_REVERSE;
-			uartSendPacket(&commandPacket);
-			break;
-
-		case 'l':
-		case 'L':
-			commandPacket.command = COMMAND_TURN_LEFT;
-			uartSendPacket(&commandPacket);
-			break;
-
-		case 'r':
-		case 'R':
-			commandPacket.command = COMMAND_TURN_RIGHT;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 's':
 		case 'S':
+			commandPacket.command = COMMAND_REVERSE;
+			uartSendPacket(&commandPacket);
+			break;
+
+		case 'a':
+		case 'A':
+			commandPacket.command = COMMAND_TURN_LEFT;
+			commandPacket.params[0] = (cmdParam[0]*52)/90;
+			commandPacket.params[1] = 70;
+			uartSendPacket(&commandPacket);
+			break;
+
+		case 'd':
+		case 'D':
+			commandPacket.command = COMMAND_TURN_RIGHT;
+			commandPacket.params[0] = (cmdParam[0]*52)/90;
+			commandPacket.params[1] = 70;
+			uartSendPacket(&commandPacket);
+			break;
+
+		case 't':
+		case 'T':
 			commandPacket.command = COMMAND_STOP;
 			uartSendPacket(&commandPacket);
 			break;

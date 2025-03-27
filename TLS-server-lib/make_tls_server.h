@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include "tls_server_lib.h"
 #include "tls_common_lib.h"
-#include "tls_pthread.h"
+#include "../TLS-client-lib/tls_pthread.h"
 
 // This function creates a new TLS server. It spawns a new
 // thread to run the server listener loop, and thus

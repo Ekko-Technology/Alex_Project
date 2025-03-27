@@ -3,4 +3,11 @@
 /libraries/
 setup_environment.log
 setup_environment.sh
+alex.crt
+alex.csr
+alex.key
+signing.key
+signing.pem
+signing.srl
+
 
