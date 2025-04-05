@@ -1,10 +1,10 @@
 #include <AFMotor.h>
 
 // Motor control
-#define FRONT_LEFT   2 // M2 on the driver shield
+#define FRONT_LEFT   2 // M4 on the driver shield
 #define FRONT_RIGHT  1 // M1 on the driver shield
 #define BACK_LEFT    3 // M3 on the driver shield
-#define BACK_RIGHT   4 // M4 on the driver shield
+#define BACK_RIGHT   4 // M2 on the driver shield
 
 AF_DCMotor motorFL(FRONT_LEFT);
 AF_DCMotor motorFR(FRONT_RIGHT);
@@ -82,4 +82,40 @@ void stop()
 {
   dir = (TDirection) STOP;
   move(0, STOP);
+}
+
+void fforward(float dist, float speed) {
+  if(dist > 0)
+    deltaDist = dist;
+  else
+    deltaDist=9999999;
+  newDist = forwardDist + deltaDist;
+  forward(dist, speed);
+}
+
+void reverse(float dist, float speed) {
+  if(dist > 0)
+    deltaDist = dist;
+  else
+    deltaDist=9999999;
+  newDist = reverseDist + deltaDist;
+  backward(dist, speed);
+}
+
+void left(float ang, float speed) {
+  if(ang == 0)
+    deltaTicks=99999999;
+  else
+    deltaTicks=computeDeltaTicks(ang);
+  targetTicks = leftReverseTicksTurns + deltaTicks;
+  ccw(ang, speed);
+}
+
+void right(float ang, float speed) {
+  if(ang == 0)
+    deltaTicks=99999999;
+  else
+    deltaTicks=computeDeltaTicks(ang);
+  targetTicks = rightReverseTicksTurns + deltaTicks;
+  cw(ang, speed);
 }

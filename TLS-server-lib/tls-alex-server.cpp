@@ -18,7 +18,7 @@
 #define SERVER_PORT			5001
 
 /* TODO: #define constants for the  filenames for Alex's private key, certificate, CA certificate name,
-        and the Common Name for your laptop */
+   and the Common Name for your laptop */
 #define KEY_FNAME  "alex.key"
 #define CERT_FNAME "alex.crt"
 #define CA_CERT_FNAME  "signing.pem"
@@ -42,9 +42,9 @@ static void *tls_conn = NULL;
 
 /*
 
-	Alex Serial Routines to the Arduino
+   Alex Serial Routines to the Arduino
 
-	*/
+*/
 
 // Prototype for sendNetworkData
 void sendNetworkData(const char *, int);
@@ -87,14 +87,33 @@ void handleResponse(TPacket *packet)
 			resp[0] = NET_ERROR_PACKET;
 			resp[1] = RESP_OK;
 			sendNetworkData(resp, sizeof(resp));
-		break;
+			break;
 
 		case RESP_STATUS:
 			handleStatus(packet);
-		break;
-
+			break;
+		case RESP_COLOUR:
+      printf("RED: ");
+      printf("%i\n", packet->params[0]);
+      printf("GREEN: ");
+      printf("%i\n", packet->params[1]);
+      printf("BLUE: ");
+      printf("%i\n", packet->params[2]);
+      printf("%c\n", packet->data[0]);
+			resp[0] = NET_COLOUR;
+			resp[1] = packet->data[0];
+			sendNetworkData(resp, sizeof(resp));
+			break;
+		case RESP_ULTRASONIC:
+			printf("Front Distance: ");
+			printf("%i\n", (int) packet->params[0]);
+			printf("%i\n",(int) packet->params[1]);
+			resp[0] = NET_ULTRASONIC;
+			resp[1] = packet->params[0];
+			sendNetworkData(resp, sizeof(resp));
+			break;
 		default:
-		printf("Boo\n");
+			printf("Boo\n");
 	}
 }
 
@@ -104,19 +123,20 @@ void handleUARTPacket(TPacket *packet)
 	switch(packet->packetType)
 	{
 		case PACKET_TYPE_COMMAND:
-				// Only we send command packets, so ignore
+			// Only we send command packets, so ignore
+
 			break;
 
 		case PACKET_TYPE_RESPONSE:
-				handleResponse(packet);
+			handleResponse(packet);
 			break;
 
 		case PACKET_TYPE_ERROR:
-				handleErrorResponse(packet);
+			handleErrorResponse(packet);
 			break;
 
 		case PACKET_TYPE_MESSAGE:
-				handleMessage(packet);
+			handleMessage(packet);
 			break;
 	}
 }
@@ -161,8 +181,7 @@ void *uartReceiveThread(void *p)
 		counter+=len;
 		if(len > 0)
 		{
-			result = deserialize(buffer, len, &packet);
-
+      result = deserialize(buffer, len, &packet);
 			if(result == PACKET_OK)
 			{
 				counter=0;
@@ -180,9 +199,9 @@ void *uartReceiveThread(void *p)
 
 /*
 
-	Alex Network Routines
+   Alex Network Routines
 
-	*/
+*/
 
 
 void sendNetworkData(const char *data, int len)
@@ -190,19 +209,19 @@ void sendNetworkData(const char *data, int len)
 	// Send only if network is active
 	if(networkActive)
 	{
-        // Use this to store the number of bytes actually written to the TLS connection.
-        int c;
+		// Use this to store the number of bytes actually written to the TLS connection.
+		int c;
 
 		printf("WRITING TO CLIENT\n");
- 
-        if(tls_conn != NULL) {
-            /* TODO: Implement SSL write here to write data to the network. Note that
-              handleNetworkData should already have set tls_conn to point to the TLS
-              connection we want to write to. */
-		c = sslWrite(tls_conn, data, len);	
-            /* END TODO */
 
-        }
+		if(tls_conn != NULL) {
+			/* TODO: Implement SSL write here to write data to the network. Note that
+			   handleNetworkData should already have set tls_conn to point to the TLS
+			   connection we want to write to. */
+			c = sslWrite(tls_conn, data, len);	
+			/* END TODO */
+
+		}
 
 		// Network is still active if we can write more then 0 bytes.
 		networkActive = (c > 0);
@@ -225,23 +244,20 @@ void handleCommand(void *conn, const char *buffer)
 	commandPacket.params[1] = cmdParam[1];
 
 	printf("COMMAND RECEIVED: %c %d %d\n", cmd, cmdParam[0], cmdParam[1]);
-	
+
 	switch(cmd)
 	{
 		case 'w':
-		case 'W':
 			commandPacket.command = COMMAND_FORWARD;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 's':
-		case 'S':
 			commandPacket.command = COMMAND_REVERSE;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 'a':
-		case 'A':
 			commandPacket.command = COMMAND_TURN_LEFT;
 			commandPacket.params[0] = (cmdParam[0]*52)/90;
 			commandPacket.params[1] = 70;
@@ -249,7 +265,6 @@ void handleCommand(void *conn, const char *buffer)
 			break;
 
 		case 'd':
-		case 'D':
 			commandPacket.command = COMMAND_TURN_RIGHT;
 			commandPacket.params[0] = (cmdParam[0]*52)/90;
 			commandPacket.params[1] = 70;
@@ -257,24 +272,44 @@ void handleCommand(void *conn, const char *buffer)
 			break;
 
 		case 't':
-		case 'T':
 			commandPacket.command = COMMAND_STOP;
 			uartSendPacket(&commandPacket);
 			break;
 
+		case 'p':
+			commandPacket.command = COMMAND_LONGFORWARD;
+			uartSendPacket(&commandPacket);
+			break;
+
+		case 'l':
+			commandPacket.command = COMMAND_LONGREVERSE;
+			uartSendPacket(&commandPacket);
+			break;
+
 		case 'c':
-		case 'C':
 			commandPacket.command = COMMAND_CLEAR_STATS;
 			commandPacket.params[0] = 0;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 'g':
-		case 'G':
 			commandPacket.command = COMMAND_GET_STATS;
 			uartSendPacket(&commandPacket);
 			break;
 
+		case 'm':
+			commandPacket.command = COMMAND_TOGGLECLAW;
+      printf("toggling arm\n");
+			uartSendPacket(&commandPacket);
+			break;
+		case 'x':
+			commandPacket.command = COMMAND_DETECTCOLOUR;
+			uartSendPacket(&commandPacket);
+			break;
+    case 'u':
+      commandPacket.command = COMMAND_ULTRASONIC;
+      uartSendPacket(&commandPacket);
+      break;
 		default:
 			printf("Bad command\n");
 
@@ -283,14 +318,14 @@ void handleCommand(void *conn, const char *buffer)
 
 void handleNetworkData(void *conn, const char *buffer, int len)
 {
-    /* Note: A problem with our design is that we actually get data to be written
-        to the SSL network from the serial port. I.e. we send a command to the Arduino,
-        get back a status, then write to the TLS connection.  So we do a hack:
-        we assume that whatever we get back from the Arduino is meant for the most
-        recent client, so we just simply store conn, which contains the TLS
-        connection, in a global variable called tls_conn */
+	/* Note: A problem with our design is that we actually get data to be written
+	   to the SSL network from the serial port. I.e. we send a command to the Arduino,
+	   get back a status, then write to the TLS connection.  So we do a hack:
+	   we assume that whatever we get back from the Arduino is meant for the most
+	   recent client, so we just simply store conn, which contains the TLS
+	   connection, in a global variable called tls_conn */
 
-        tls_conn = conn; // This is used by sendNetworkData
+	tls_conn = conn; // This is used by sendNetworkData
 
 	if(buffer[0] == NET_COMMAND_PACKET)
 		handleCommand(conn, buffer);
@@ -301,7 +336,7 @@ void *worker(void *conn)
 	int len;
 
 	char buffer[BUF_LEN];
-	
+
 	while(networkActive)
 	{
 		/* TODO: Implement SSL read into buffer */
@@ -318,9 +353,9 @@ void *worker(void *conn)
 				perror("ERROR READING NETWORK: ");
 	}
 
-    // Reset tls_conn to NULL.
-    tls_conn = NULL;
-    EXIT_THREAD(conn);
+	// Reset tls_conn to NULL.
+	tls_conn = NULL;
+	EXIT_THREAD(conn);
 }
 
 
@@ -336,7 +371,7 @@ void sendHello()
 int main()
 {
 	// Start the uartReceiveThread. The network thread is started by
-    // createServer
+	// createServer
 
 	pthread_t serThread;
 
@@ -351,20 +386,20 @@ int main()
 	printf("DONE. Starting Serial Listener\n");
 	pthread_create(&serThread, NULL, uartReceiveThread, NULL);
 
-    printf("Starting Alex Server\n");
+	printf("Starting Alex Server\n");
 
-    networkActive = 1;
+	networkActive = 1;
 
-    /* TODO: Call createServer with the necessary parameters to do client authentication and to send
-        Alex's certificate. Use the #define names you defined earlier  */
+	/* TODO: Call createServer with the necessary parameters to do client authentication and to send
+	   Alex's certificate. Use the #define names you defined earlier  */
 	createServer(KEY_FNAME, CERT_FNAME, SERVER_PORT, &worker, CA_CERT_FNAME, CLIENT_NAME, 1);
-    /* TODO END */
+	/* TODO END */
 
 	printf("DONE. Sending HELLO to Arduino\n");
 	sendHello();
 	printf("DONE.\n");
 
 
-    // Loop while the server is active
-    while(server_is_running());
+	// Loop while the server is active
+	while(server_is_running());
 }
