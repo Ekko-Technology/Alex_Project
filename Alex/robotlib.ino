@@ -66,13 +66,13 @@ void backward(float dist, float speed)
   move(speed, BACKWARD);
 }
 
-void ccw(float dist, float speed)
+void ccw(float angle, float speed)
 {
   dir = (TDirection) LEFT;
   move(speed, LEFT); // check again (LEFT or CCW)
 }
 
-void cw(float dist, float speed)
+void cw(float angle, float speed)
 {
   dir = (TDirection) RIGHT;
   move(speed, RIGHT); // check again (RIGHT or CW)

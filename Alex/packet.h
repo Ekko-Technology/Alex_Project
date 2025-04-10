@@ -8,8 +8,8 @@
 typedef struct
 {
 
-  char packetType;
-  char command;
+  char packetType; //corresponds to TPacketType constants
+  char command; // corresponds to TResponseType or TCommandType constants
   char dummy[2]; // Padding to make up 4 bytes
   char data[MAX_STR_LEN]; // String data
   uint32_t params[16];
