@@ -34,15 +34,15 @@ LIDAR_SCAN_TOPIC = "lidar/scan"
 
 # Plotting Costants
 FRAMERATE =60
-LIDAR_OFFSET_DEGREES = -90
+LIDAR_OFFSET_DEGREES = 0
 LIDAR_OFFSET_RADIANS = np.deg2rad(LIDAR_OFFSET_DEGREES)
 
 # SLAM constants
 MAP_SIZE_PIXELS = 500
 MAP_SIZE_METERS = 8
 MAP_SIZE_MILLIMETERS = MAP_SIZE_METERS * 1000
-ROBOT_WIDTH_METERS = 0.2 
-ROBOT_HEIGHT_METERS = 0.2 
+ROBOT_WIDTH_METERS = 0.18
+ROBOT_HEIGHT_METERS = 0.34 
 
 # Coordinate Systems
 # Breezy SLAM MAP IMAGE Coordinate System
@@ -81,6 +81,7 @@ def lidarDisplayProcess(setupBarrier:Barrier=None, readyBarrier:Barrier=None):
     # Subscribing
     subscribe(topic=LIDAR_SCAN_TOPIC, ensureReply=True, replyTimeout=1)
     subscribe(topic=SLAM_MAPPOSE_TOPIC, ensureReply=True, replyTimeout=1)
+
 
     # Setting up plots
     fig,gs = createOverallPlot()
@@ -191,10 +192,11 @@ def createLidarPlot(fig:plt.Figure, gs:gridspec.GridSpec):
         tuple: (lidarScanAxis, scanPointsArtist)
             lidarScanAxis (plt.Axes): The polar axes object for the Lidar scan.
             scanPointsArtist (plt.Artist): The scatter plot artist for Lidar scan data.
-    """
+
     # We create an axis/sublot in the figure at the location in the grid
     # Matplotlib actually supports polar plots, so we can use that to display the lidar scan
     # https://matplotlib.org/stable/api/_as_gen/matplotlib.figure.Figure.add_subplot.html#matplotlib.figure.Figure.add_subplot
+    """
     ax:plt.Axes = fig.add_subplot(gs[0,0], projection='polar')
     ax.set_theta_direction(-1)
     ax.set_theta_zero_location('N')
@@ -235,6 +237,22 @@ def createLidarPlot(fig:plt.Figure, gs:gridspec.GridSpec):
     lidarScanAxis = ax
     return lidarScanAxis, scanPointsArtist
 
+
+def medfilt(data, window_size):
+    
+    pad_width = int(window_size) // 2 + 1
+    padded_data = np.pad(data, (pad_width, pad_width), mode="edge")
+
+    filtered_data = []
+
+    for i in range(len(data)):
+        window  = padded_data[i+i + window_size]
+        median_value = np.median(window)
+        filtered_data.append(median_value)
+
+    return np.array(filtered_data)
+
+
 def updateLidarPlot(message, scanPointsArtist:plt.Artist):
     """
     Update the Lidar scan plot using data from the received message.
@@ -255,6 +273,9 @@ def updateLidarPlot(message, scanPointsArtist:plt.Artist):
     # extract the payload from the message
     angleData, distanceData, qualityData = PubSubMsg.getPayload(message)
 
+    # testing to filter noise
+    # distanceData = medfilt(distanceData, window_size=3) 
+
     # We do some processing to reduce the number for datapoints shown
     offset_degrees = LIDAR_OFFSET_DEGREES
     target_measurements_per_scan = 180
@@ -271,6 +292,13 @@ def updateLidarPlot(message, scanPointsArtist:plt.Artist):
     # convert to Radians. Matplotlib uses radians for polar plots
     dist = np.array(dist)
     angle = np.deg2rad(angle)
+
+   #filter distance that are too far [testing]
+  
+   # MAX_DISTANCE = 1000 # in millimeters
+   #valid_mask = dist <= MAX_DISTANCE
+   #dist = dist[valid_mask]
+   #angle = angle[valid_mask]
 
     # update the scatter plot data
     scanPointsArtist.set_offsets(np.column_stack([angle, dist]))
@@ -383,6 +411,7 @@ def updateSlamPlot(message, slamMapArtist:plt.Artist, robotArtist:plt.Artist):
 
     # get payload
     x, y, thetaDeg, mapbytes = PubSubMsg.getPayload(message)
+    thetaDeg = thetaDeg - 90
     # x and y are in millimeters, theta is in degrees
 
     # First we update the map
@@ -394,7 +423,7 @@ def updateSlamPlot(message, slamMapArtist:plt.Artist, robotArtist:plt.Artist):
 
     # Then we update the robot position/pose
     # The arrow represents the robot's position and orientation     
-    thetaRad = thetaDeg * np.pi / 180
+    thetaRad = (thetaDeg * np.pi / 180)
     arrow_length = ROBOT_HEIGHT_METERS*1000
     # We get a projection in the opposite direction of facing
     dy,dx = getDelta(thetaRad+np.pi, arrow_length)
@@ -439,8 +468,6 @@ def updatePlots(pubSubMessages, scanPointsArtist:plt.Artist, slamMapArtist:plt.A
     It then updates the scanPointsArtist for Lidar scans and both slamMapArtist and robotArtist for the SLAM map and robot pose respectively.
 
     Args:
-        pubSubMessages (list): List of incoming Pub/Sub messages.
-        scanPointsArtist (plt.Artist): Matplotlib Artist for the Lidar scan data.
         slamMapArtist (plt.Artist): Matplotlib Artist for the SLAM map data.
         robotArtist (plt.Artist): Matplotlib Artist for the robot's position and orientation.
 

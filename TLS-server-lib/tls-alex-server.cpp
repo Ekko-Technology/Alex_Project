@@ -93,6 +93,7 @@ void handleResponse(TPacket *packet)
 			handleStatus(packet);
 			break;
 		case RESP_COLOUR:
+      char cdata[67];
       printf("RED: ");
       printf("%i\n", packet->params[0]);
       printf("GREEN: ");
@@ -100,17 +101,18 @@ void handleResponse(TPacket *packet)
       printf("BLUE: ");
       printf("%i\n", packet->params[2]);
       printf("%c\n", packet->data[0]);
-			resp[0] = NET_COLOUR;
-			resp[1] = packet->data[0];
-			sendNetworkData(resp, sizeof(resp));
+			cdata[0] = NET_COLOUR;
+			cdata[1] = packet->data[0];
+	    memcpy(&cdata[2], packet->params, sizeof(packet->params));
+			sendNetworkData(cdata, sizeof(cdata));
 			break;
 		case RESP_ULTRASONIC:
 			printf("Front Distance: ");
 			printf("%i\n", (int) packet->params[0]);
-			printf("%i\n",(int) packet->params[1]);
-			resp[0] = NET_ULTRASONIC;
-			resp[1] = packet->params[0];
-			sendNetworkData(resp, sizeof(resp));
+      char udata[65];
+			udata[0] = NET_ULTRASONIC;
+	    memcpy(&udata[1], packet->params, sizeof(packet->params));
+			sendNetworkData(udata, sizeof(udata));
 			break;
 		default:
 			printf("Boo\n");
@@ -259,14 +261,14 @@ void handleCommand(void *conn, const char *buffer)
 
 		case 'a':
 			commandPacket.command = COMMAND_TURN_LEFT;
-			commandPacket.params[0] = (cmdParam[0]*52)/90;
+			commandPacket.params[0] = ((cmdParam[0]*52)/90)*1.17;
 			commandPacket.params[1] = 70;
 			uartSendPacket(&commandPacket);
 			break;
 
 		case 'd':
 			commandPacket.command = COMMAND_TURN_RIGHT;
-			commandPacket.params[0] = (cmdParam[0]*52)/90;
+			commandPacket.params[0] = ((cmdParam[0]*52)/90)*1.8;
 			commandPacket.params[1] = 70;
 			uartSendPacket(&commandPacket);
 			break;
@@ -302,6 +304,11 @@ void handleCommand(void *conn, const char *buffer)
       printf("toggling arm\n");
 			uartSendPacket(&commandPacket);
 			break;
+    case 'j':
+			commandPacket.command = COMMAND_TRAPDOOR;
+      printf("opening trapdoor\n");
+			uartSendPacket(&commandPacket);
+      break;
 		case 'x':
 			commandPacket.command = COMMAND_DETECTCOLOUR;
 			uartSendPacket(&commandPacket);

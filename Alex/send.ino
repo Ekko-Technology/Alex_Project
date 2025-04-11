@@ -19,6 +19,8 @@ void sendStatus()
   statusPacket.params[7] = rightReverseTicksTurns;
   statusPacket.params[8] = forwardDist;
   statusPacket.params[9] = reverseDist;
+  statusPacket.params[10] = state;
+  statusPacket.params[11] = trap_state;
   sendResponse(&statusPacket);
 }
 
