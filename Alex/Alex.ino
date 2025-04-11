@@ -499,7 +499,7 @@ void loop() {
 		else
 			if(dir == RIGHT)
 			{
-				if(rightReverseTicksTurns >= targetTicks)
+				if(leftForwardTicksTurns >= targetTicks)
 				{
 					deltaTicks=0;
 					targetTicks=0;

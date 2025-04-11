@@ -1,6 +1,6 @@
 void handleCommand(TPacket *command)
 {
-  int speed = 75;
+  int speed = 90;
   switch(command->command)
   {
     // For movement commands, param[0] = distance, param[1] = speed.
@@ -63,6 +63,11 @@ void handleCommand(TPacket *command)
       sendOK();
       detectDistance();
       sendMessage("Detecting Distance");
+      break;
+    case COMMAND_TRAPDOOR:
+      sendOK();
+      toggle_trapdoor();
+      sendMessage("Medpak delivered");
       break;
     default:
       sendBadCommand();

@@ -16,7 +16,7 @@ void move(float speed, int direction)
   int speed_scaled = (speed/100.0) * 255;
   motorFL.setSpeed(speed_scaled);
   motorFR.setSpeed(speed_scaled);
-  motorBL.setSpeed(speed_scaled);
+  motorBL.setSpeed(speed_scaled*1.1);
   motorBR.setSpeed(speed_scaled);
 
   switch(direction)
@@ -116,6 +116,6 @@ void right(float ang, float speed) {
     deltaTicks=99999999;
   else
     deltaTicks=computeDeltaTicks(ang);
-  targetTicks = rightReverseTicksTurns + deltaTicks;
+  targetTicks = leftForwardTicksTurns + deltaTicks;
   cw(ang, speed);
 }

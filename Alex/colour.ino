@@ -1,5 +1,5 @@
 #define signalOut PC7
-#define NUM_READINGS 5  
+#define NUM_READINGS 10  
 #define SPEED_OF_SOUND 0.0345 // cm/us
 #define TRIG_PIN PD7
 #define ECHO_PIN PC1 
@@ -77,16 +77,19 @@ void detectColour()
     colour_response.params[1] = avg_green;
     colour_response.params[2] = avg_blue;
 
-    if ((avg_red + avg_green + avg_blue) < 600) {
-        sendMessage("Detected Color: White");
-        colour_response.data[0] = 'w';
-    } else if (avg_red < avg_green && avg_red < avg_blue) {
-        sendMessage("Detected Color: Red");
-        colour_response.data[0] = 'r';
-    } else if (avg_green < avg_red && avg_green < avg_blue) {
+    if ((avg_green > avg_red && avg_green > avg_blue) && !(avg_red < avg_green && avg_red < avg_blue)) {
         sendMessage("Detected Color: Green");
         colour_response.data[0] = 'g';
-    } else {
+    } 
+    else if (avg_red < avg_green && avg_red < avg_blue) {
+        sendMessage("Detected Color: Red");
+        colour_response.data[0] = 'r';
+    } 
+    else if ((avg_red + avg_green + avg_blue) < 600) {
+        sendMessage("Detected Color: White");
+        colour_response.data[0] = 'w';
+    }
+    else {
         sendMessage("Don't know color");
         colour_response.data[0] = 'u';
     }

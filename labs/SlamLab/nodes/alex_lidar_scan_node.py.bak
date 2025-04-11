@@ -18,8 +18,6 @@ BAUDRATE = 115200       # The default baud rate for the RPLidar A1M8
 INITIAL_ROUNDS_IGNORED = 10
 DEFAULT_SCAN_MODE = 4
 USE_LIDAR_TYPICAL = True
-MIN_DISTANCE = 0.1  # Minimum distance in meters to consider a point valid
-MAX_DISTANCE = 6.0  # Maximum distance in meters to consider a point valid
 
 LIDAR_SCAN_TOPIC = "lidar/scan"
 # LIDAR_STATUS_TOPIC = "lidar/status"
@@ -60,7 +58,7 @@ def lidarScanThread(setupBarrier:Barrier=None, readyBarrier:Barrier=None):
     for i in range(attempts):
         try:
             print(f"Connecting to Lidar... Attempt {i+1}/{attempts}")
-            lidar = lidarConnect(port=PORT, baudrate=BAUDRATE)
+            lidar = lidarConnect( port=PORT, baudrate=BAUDRATE)
             lidar.set_motor_pwm(500)
 
             # health
@@ -107,14 +105,31 @@ def lidarScanThread(setupBarrier:Barrier=None, readyBarrier:Barrier=None):
             current_round, results = process_scan((count,scan), scanState=current_round)
             if results and current_round["r"] > INITIAL_ROUNDS_IGNORED:
                 
+                print("Sample point structure:", results[0])  # Show first point's structure
 
                 # TODO: [Optional] Filter your results to reject low quality scans
                 # process_scan provides angle, distance and quality information
                 # The quality information can be used to filter out low quality scans
                 # You can filter the results based on the quality information here
                 # Or choose to filter the results elsewhere in the processing pipeline
-                
-                # Resample the scan to a fixed number of points
+
+                # Step 1: Filter by quality
+                filtered = [p for p in results if p[0] > 10]
+            
+                # Step 2: Filter by range
+                filtered = [p for p in filtered if 0.1 < p[2] < 6.0]
+            
+                # Step 3: Smoothing (optional)
+                if filtered:
+                  scan_history.append(filtered)
+                  smoothed = np.mean(scan_history, axis=0)
+                # Step 4: Outlier rejection (optional)
+                if len(smoothed) > 10:
+                    dists = np.array([p[2] for p in smoothed])
+                    median = np.median(dists)
+                    std = np.std(dists)
+                    final = [p for p in smoothed if abs(p[2] - median) < 2 * std]
+                    publish(LIDAR_SCAN_TOPIC, final)
                 publish(LIDAR_SCAN_TOPIC, results)
 
             if ctx.isExit():
