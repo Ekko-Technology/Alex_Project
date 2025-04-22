@@ -38,59 +38,25 @@ unsigned long computeDeltaTicks(float ang){
  * Alex Communication Routines.
  * 
  */
- 
+
 TResult readPacket(TPacket *packet)
 {
-    // Reads in data from the serial port and
-    // deserializes it.Returns deserialized
-    // data in "packet".
-    
-    char buffer[PACKET_SIZE];
-    int len;
+	// Reads in data from the serial port and
+	// deserializes it.Returns deserialized
+	// data in "packet".
 
-    len = readSerial(buffer);
+	char buffer[PACKET_SIZE];
+	int len;
 
-    if(len == 0)
-      return PACKET_INCOMPLETE;
-    else
-      return deserialize(buffer, len, packet);
-    
+	len = readSerial(buffer);
+
+	if(len == 0)
+		return PACKET_INCOMPLETE;
+	else
+		return deserialize(buffer, len, packet);
+
 }
 
-void sendStatus()
-{
-  // Implement code to send back a packet containing key
-  // information like leftTicks, rightTicks, leftRevs, rightRevs
-  // forwardDist and reverseDist
-  // Use the params array to store this information, and set the
-  // packetType and command files accordingly, then use sendResponse
-  // to send out the packet. See sendMessage on how to use sendResponse.
-  TPacket statusPacket;
-  statusPacket.packetType=PACKET_TYPE_RESPONSE;
-  statusPacket.command=RESP_STATUS;
-  statusPacket.params[0] = leftForwardTicks;
-  statusPacket.params[1] = rightForwardTicks;
-  statusPacket.params[2] = leftReverseTicks;
-  statusPacket.params[3] = rightReverseTicks;
-  statusPacket.params[4] = leftForwardTicksTurns;
-  statusPacket.params[5] = rightForwardTicksTurns;
-  statusPacket.params[6] = leftReverseTicksTurns;
-  statusPacket.params[7] = rightReverseTicksTurns;
-  statusPacket.params[8] = forwardDist;
-  statusPacket.params[9] = reverseDist;
-  sendResponse(&statusPacket);
-}
-
-void sendMessage(const char *message)
-{
-  // Sends text messages back to the Pi. Useful
-  // for debugging.
-  
-  TPacket messagePacket;
-  messagePacket.packetType=PACKET_TYPE_MESSAGE;
-  strncpy(messagePacket.data, message, MAX_STR_LEN);
-  sendResponse(&messagePacket);
-}
 
 void dbprintf(char *format, ...) {
 	va_list args;
@@ -100,68 +66,6 @@ void dbprintf(char *format, ...) {
 	vsprintf(buffer, format, args);
 	sendMessage(buffer);
 }
-
-void sendBadPacket()
-{
-  // Tell the Pi that it sent us a packet with a bad
-  // magic number.
-  
-  TPacket badPacket;
-  badPacket.packetType = PACKET_TYPE_ERROR;
-  badPacket.command = RESP_BAD_PACKET;
-  sendResponse(&badPacket);
-  
-}
-
-void sendBadChecksum()
-{
-  // Tell the Pi that it sent us a packet with a bad
-  // checksum.
-  
-  TPacket badChecksum;
-  badChecksum.packetType = PACKET_TYPE_ERROR;
-  badChecksum.command = RESP_BAD_CHECKSUM;
-  sendResponse(&badChecksum);  
-}
-
-void sendBadCommand()
-{
-  // Tell the Pi that we don't understand its
-  // command sent to us.
-  
-  TPacket badCommand;
-  badCommand.packetType=PACKET_TYPE_ERROR;
-  badCommand.command=RESP_BAD_COMMAND;
-  sendResponse(&badCommand);
-}
-
-void sendBadResponse()
-{
-  TPacket badResponse;
-  badResponse.packetType = PACKET_TYPE_ERROR;
-  badResponse.command = RESP_BAD_RESPONSE;
-  sendResponse(&badResponse);
-}
-
-void sendOK()
-{
-  TPacket okPacket;
-  okPacket.packetType = PACKET_TYPE_RESPONSE;
-  okPacket.command = RESP_OK;
-  sendResponse(&okPacket);  
-}
-
-void sendResponse(TPacket *packet)
-{
-  // Takes a packet, serializes it then sends it out
-  // over the serial port.
-  char buffer[PACKET_SIZE];
-  int len;
-
-  len = serialize(buffer, packet, sizeof(TPacket));
-  writeSerial(buffer, len);
-}
-
 
 /*
  * Setup and start codes for external interrupts and 
@@ -228,6 +132,11 @@ ISR(INT3_vect){
 
 // Implement INT2 and INT3 ISRs above.
 
+
+
+
+
+
 /*
  * Setup and start codes for serial communications
  * 
@@ -287,16 +196,9 @@ ISR(INT3_vect){
 
 void setupSerial()
 {
-<<<<<<< HEAD
-  // To replace later with bare-metal.
-  Serial.begin(9600);
-  // Change Serial to Serial2/Serial3/Serial4 in later labs when using the other UARTs
-}
-=======
   // Configure baud rate
   UBRR0H = (uint8_t)(MYUBRR >> 8);
   UBRR0L = (uint8_t)(MYUBRR);
->>>>>>> recovery-branch
 
   // Enable receiver and transmitter
   UCSR0B = (1 << RXEN0) | (1 << TXEN0);
@@ -307,44 +209,24 @@ void setupSerial()
 
 void startSerial()
 {
-<<<<<<< HEAD
-  // Empty for now. To be replaced with bare-metal code
-  // later on.
-  
-=======
   // No need for extra start logic for UART0 in bare-metal
->>>>>>> recovery-branch
 }
 
 int readSerial(char *buffer)
 {
   int count = 0;
 
-<<<<<<< HEAD
-  int count=0;
-
-  // Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs
-
-  while(Serial.available())
-    buffer[count++] = Serial.read();
-
-=======
   // While data is available
   while (UCSR0A & (1 << RXC0))
   {
     buffer[count++] = UDR0;
   }
 
->>>>>>> recovery-branch
   return count;
 }
 
 void writeSerial(const char *buffer, int len)
 {
-<<<<<<< HEAD
-  Serial.write(buffer, len);
-  // Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs
-=======
   for (int i = 0; i < len; i++)
   {
     // Wait for empty transmit buffer
@@ -353,8 +235,9 @@ void writeSerial(const char *buffer, int len)
     // Put data into buffer, sends the data
     UDR0 = buffer[i];
   }
->>>>>>> recovery-branch
 }
+
+
 
 
 
@@ -393,84 +276,40 @@ void initializeState()
 	clearCounters();
 }
 
-void handleCommand(TPacket *command)
-{
-  switch(command->command)
-  {
-    // For movement commands, param[0] = distance, param[1] = speed.
-    case COMMAND_FORWARD:
-        sendOK();
-        fforward((double) command->params[0], (float) command->params[1]);
-      break;
-
-    case COMMAND_REVERSE:
-        sendOK();
-        reverse((double) command->params[0], (float) command->params[1]);
-      break;
-
-    case COMMAND_TURN_LEFT:
-        sendOK();
-        left((double) command->params[0], (float) command->params[1]);
-      break;
-
-    case COMMAND_TURN_RIGHT:
-        sendOK();
-        right((double) command->params[0], (float) command->params[1]);
-      break;
-
-    case COMMAND_STOP:
-        sendOK();
-        stop();
-      break;
-
-    case COMMAND_GET_STATS:
-        sendOK();
-        sendStatus();
-      break;
-
-    case COMMAND_CLEAR_STATS:
-        sendOK();
-        clearOneCounter(command->params[0]);
-      break;
-      
-    default:
-      sendBadCommand();
-  }
-}
 
 void waitForHello()
 {
-  int exit=0;
+	int exit=0;
 
-  while(!exit)
-  {
-    TPacket hello;
-    TResult result;
-    
-    do
-    {
-      result = readPacket(&hello);
-    } while (result == PACKET_INCOMPLETE);
+	while(!exit)
+	{
+		TPacket hello;
+		TResult result;
 
-    if(result == PACKET_OK)
-    {
-      if(hello.packetType == PACKET_TYPE_HELLO)
-      {
-        sendOK();
-        exit=1;
-      }
-      else
-        sendBadResponse();
-    }
-    else
-      if(result == PACKET_BAD)
-      {
-        sendBadPacket();
-      }
-      else
-        if(result == PACKET_CHECKSUM_BAD)
-          sendBadChecksum();
-  } // !exit
+		do
+		{
+			result = readPacket(&hello);
+		} while (result == PACKET_INCOMPLETE);
+
+		if(result == PACKET_OK)
+		{
+			if(hello.packetType == PACKET_TYPE_HELLO)
+			{
+				sendOK();
+				exit=1;
+			}
+			else
+				sendBadResponse();
+		}
+		else
+			if(result == PACKET_BAD)
+			{
+				sendBadPacket();
+			}
+			else
+				if(result == PACKET_CHECKSUM_BAD)
+					sendBadChecksum();
+	} // !exit
 }
 
 void setup() {
@@ -490,36 +329,36 @@ void setup() {
 
 void handlePacket(TPacket *packet)
 {
-  switch(packet->packetType)
-  {
-    case PACKET_TYPE_COMMAND:
-      handleCommand(packet);
-      break;
+	switch(packet->packetType)
+	{
+		case PACKET_TYPE_COMMAND:
+			handleCommand(packet);
+			break;
 
-    case PACKET_TYPE_RESPONSE:
-      break;
+		case PACKET_TYPE_RESPONSE:
+			break;
 
-    case PACKET_TYPE_ERROR:
-      break;
+		case PACKET_TYPE_ERROR:
+			break;
 
-    case PACKET_TYPE_MESSAGE:
-      break;
+		case PACKET_TYPE_MESSAGE:
+			break;
 
-    case PACKET_TYPE_HELLO:
-      break;
-  }
+		case PACKET_TYPE_HELLO:
+			break;
+	}
 }
 
 void loop() {
-// Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2
+	// Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2
 
- // forward(0, 100);
+	// forward(0, 100);
 
-// Uncomment the code below for Week 9 Studio 2
+	// Uncomment the code below for Week 9 Studio 2
 
 
- // put your main code here, to run repeatedly:
-  TPacket recvPacket; // This holds commands from the Pi
+	// put your main code here, to run repeatedly:
+	TPacket recvPacket; // This holds commands from the Pi
 
 	TResult result = readPacket(&recvPacket); // Reads from serial port?
 

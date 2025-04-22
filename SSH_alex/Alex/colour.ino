@@ -76,19 +76,14 @@ void detectColour()
     colour_response.params[1] = avg_green;
     colour_response.params[2] = avg_blue;
 
-<<<<<<< HEAD
-    if ((avg_green > avg_red && avg_green > avg_blue) && !(avg_red < avg_green && avg_red < avg_blue)) {
-        sendMessage("Detected Color: Green");
-        colour_response.data[0] = 'g';
-=======
     
     float total = avg_red + avg_green + avg_blue;
     float diff_green = 0;
     float diff_red = 0;
     
 
-    float green_color[3] = {0.46592, 0.23110, 0.30298};
-    float red_color[3] = {0.28301, 0.36436, 0.35263};
+    float green_color[3] = {0.37719, 0.32059, 0.30149};
+    float red_color[3] = {0.21409, 0.44173, 0.34417};
 
     for (int i = 0; i < 3; i++)
     {
@@ -111,7 +106,6 @@ void detectColour()
     if ((avg_green > avg_red && avg_green > avg_blue) && !(avg_red < avg_green && avg_red < avg_blue)) {
         sendMessage("Detected Color: Green");
         colour_response.data[0] = 'g';
->>>>>>> recovery-branch
     } 
     else if (avg_red < avg_green && avg_red < avg_blue) {
         sendMessage("Detected Color: Red");
@@ -126,9 +120,10 @@ void detectColour()
         colour_response.data[0] = 'u';
     }
     */
-    detectDistance();
+
     // Send response
     sendResponse(&colour_response);
+    detectDistance();
 }
 
 //void detectDistance()
