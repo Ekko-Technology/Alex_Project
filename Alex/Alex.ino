@@ -139,49 +139,102 @@ ISR(INT3_vect){
 // Set up the serial connection. For now we are using 
 // Arduino Wiring, you will replace this later
 // with bare-metal code.
+//void setupSerial()
+//{
+//	// To replace later with bare-metal.
+//	Serial.begin(9600);
+//	// Change Serial to Serial2/Serial3/Serial4 in later labs when using the other UARTs
+//}
+//
+//// Start the serial connection. For now we are using
+//// Arduino wiring and this function is empty. We will
+//// replace this later with bare-metal code.
+//
+//void startSerial()
+//{
+//	// Empty for now. To be replaced with bare-metal code
+//	// later on.
+//
+//}
+//
+//// Read the serial port. Returns the read character in
+//// ch if available. Also returns TRUE if ch is valid. 
+//// This will be replaced later with bare-metal code.
+//
+//int readSerial(char *buffer)
+//{
+//
+//	int count=0;
+//
+//	// Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs
+//
+//	while(Serial.available())
+//		buffer[count++] = Serial.read();
+//
+//	return count;
+//}
+//
+//// Write to the serial port. Replaced later with
+//// bare-metal code
+//
+//void writeSerial(const char *buffer, int len)
+//{
+//	Serial.write(buffer, len);
+//	// Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs
+//}
+
+
+
+#define F_CPU 16000000UL
+#define BAUD 9600
+#define MYUBRR ((F_CPU / (16UL * BAUD)) - 1)
+
 void setupSerial()
 {
-	// To replace later with bare-metal.
-	Serial.begin(9600);
-	// Change Serial to Serial2/Serial3/Serial4 in later labs when using the other UARTs
-}
+  // Configure baud rate
+  UBRR0H = (uint8_t)(MYUBRR >> 8);
+  UBRR0L = (uint8_t)(MYUBRR);
 
-// Start the serial connection. For now we are using
-// Arduino wiring and this function is empty. We will
-// replace this later with bare-metal code.
+  // Enable receiver and transmitter
+  UCSR0B = (1 << RXEN0) | (1 << TXEN0);
+
+  // Set frame format: 8 data bits, no parity, 1 stop bit (8N1)
+  UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
+}
 
 void startSerial()
 {
-	// Empty for now. To be replaced with bare-metal code
-	// later on.
-
+  // No need for extra start logic for UART0 in bare-metal
 }
-
-// Read the serial port. Returns the read character in
-// ch if available. Also returns TRUE if ch is valid. 
-// This will be replaced later with bare-metal code.
 
 int readSerial(char *buffer)
 {
+  int count = 0;
 
-	int count=0;
+  // While data is available
+  while (UCSR0A & (1 << RXC0))
+  {
+    buffer[count++] = UDR0;
+  }
 
-	// Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs
-
-	while(Serial.available())
-		buffer[count++] = Serial.read();
-
-	return count;
+  return count;
 }
-
-// Write to the serial port. Replaced later with
-// bare-metal code
 
 void writeSerial(const char *buffer, int len)
 {
-	Serial.write(buffer, len);
-	// Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs
+  for (int i = 0; i < len; i++)
+  {
+    // Wait for empty transmit buffer
+    while (!(UCSR0A & (1 << UDRE0)));
+
+    // Put data into buffer, sends the data
+    UDR0 = buffer[i];
+  }
 }
+
+
+
+
 
 /*
  * Alex's setup and run codes

@@ -2,7 +2,7 @@
 // we will use 16-bit timer's pin 45(PL4) and 46(PL3) which corresponds to 0C5B and 0C5A counters respectively
 static long left_servo_open = 280;
 static long right_servo_open = 1200;
-static long left_servo_close = 400;
+static long left_servo_close = 500;
 static long right_servo_close = 700;
 static long state = 1;
 static long trap_state = 1;

@@ -209,4 +209,591 @@ Date:   Thu Mar 27 21:17:29 2025 +0800
 [32m+[m[32m}[m
 [32m+[m
 [32m+[m[32mvoid sendBadCommand()[m
-[32m+[m[
+[32m+[m[32m{[m
+[32m+[m[32m  // Tell the Pi that we don't understand its[m
+[32m+[m[32m  // command sent to us.[m
+[32m+[m[41m  [m
+[32m+[m[32m  TPacket badCommand;[m
+[32m+[m[32m  badCommand.packetType=PACKET_TYPE_ERROR;[m
+[32m+[m[32m  badCommand.command=RESP_BAD_COMMAND;[m
+[32m+[m[32m  sendResponse(&badCommand);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid sendBadResponse()[m
+[32m+[m[32m{[m
+[32m+[m[32m  TPacket badResponse;[m
+[32m+[m[32m  badResponse.packetType = PACKET_TYPE_ERROR;[m
+[32m+[m[32m  badResponse.command = RESP_BAD_RESPONSE;[m
+[32m+[m[32m  sendResponse(&badResponse);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid sendOK()[m
+[32m+[m[32m{[m
+[32m+[m[32m  TPacket okPacket;[m
+[32m+[m[32m  okPacket.packetType = PACKET_TYPE_RESPONSE;[m
+[32m+[m[32m  okPacket.command = RESP_OK;[m
+[32m+[m[32m  sendResponse(&okPacket);[m[41m  [m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid sendResponse(TPacket *packet)[m
+[32m+[m[32m{[m
+[32m+[m[32m  // Takes a packet, serializes it then sends it out[m
+[32m+[m[32m  // over the serial port.[m
+[32m+[m[32m  char buffer[PACKET_SIZE];[m
+[32m+[m[32m  int len;[m
+[32m+[m
+[32m+[m[32m  len = serialize(buffer, packet, sizeof(TPacket));[m
+[32m+[m[32m  writeSerial(buffer, len);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m
+[32m+[m[32m/*[m
+[32m+[m[32m * Setup and start codes for external interrupts and[m[41m [m
+[32m+[m[32m * pullup resistors.[m
+[32m+[m[32m *[m[41m [m
+[32m+[m[32m */[m
+[32m+[m[32m// Enable pull up resistors on pins 18 and 19[m
+[32m+[m[32mvoid enablePullups()[m
+[32m+[m[32m{[m
+[32m+[m[32m  // Use bare-metal to enable the pull-up resistors on pins[m
+[32m+[m[32m  // 19 and 18. These are pins PD2 and PD3 respectively.[m
+[32m+[m[32m  // We set bits 2 and 3 in DDRD to 0 to make them inputs.[m[41m [m
+[32m+[m[32m  DDRD &= ~((1 << 2) | (1 << 3)); // Clear the relevant bits in DDRE to configure as input[m
+[32m+[m[32m  PORTD |= (1 << 2) | (1 << 3); // Setting these bits activates the built-in pull-up resistors, ensuring the line is held high when not actively pulled low by the sensor[m
+[32m+[m[41m  [m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Functions to be called by INT2 and INT3 ISRs.[m
+[32m+[m[32mvoid leftISR()[m
+[32m+[m[32m{[m
+[32m+[m[32m  if (dir == FORWARD) {[m
+[32m+[m[32m    leftForwardTicks++;[m
+[32m+[m[32m    forwardDist = (unsigned long) ((float) leftForwardTicks / COUNTS_PER_REV * WHEEL_CIRC);[m
+[32m+[m[32m  } else if (dir == BACKWARD) {[m
+[32m+[m[32m    leftReverseTicks++;[m
+[32m+[m[32m    reverseDist = (unsigned long) ((float) leftReverseTicks / COUNTS_PER_REV * WHEEL_CIRC);[m
+[32m+[m[32m  } else if (dir == LEFT) {[m
+[32m+[m[32m    leftReverseTicksTurns++;[m
+[32m+[m[32m  } else if (dir == RIGHT) {[m
+[32m+[m[32m    leftForwardTicksTurns++;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  //Serial.print("LEFT: ");[m
+[32m+[m[32m  //Serial.println(leftTicks * WHEEL_CIRC / COUNTS_PER_REV);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid rightISR()[m
+[32m+[m[32m{[m
+[32m+[m[32m  if (dir == FORWARD) {[m
+[32m+[m[32m    rightForwardTicks++;[m
+[32m+[m[32m  } else if (dir == BACKWARD) {[m
+[32m+[m[32m    rightReverseTicks++;[m
+[32m+[m[32m  } else if (dir == LEFT) {[m
+[32m+[m[32m    rightForwardTicksTurns++;[m
+[32m+[m[32m  } else if (dir == RIGHT) {[m
+[32m+[m[32m    rightReverseTicksTurns++;[m
+[32m+[m[32m  }[m
+[32m+[m[32m  //Serial.print("RIGHT: ");[m
+[32m+[m[32m  //Serial.println(rightTicks * WHEEL_CIRC / COUNTS_PER_REV);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Set up the external interrupt pins INT2 and INT3[m
+[32m+[m[32m// for falling edge triggered. Use bare-metal.[m
+[32m+[m[32mvoid setupEINT()[m
+[32m+[m[32m{[m
+[32m+[m[32m  // Use bare-metal to configure pins 18 and 19 to be[m
+[32m+[m[32m  // falling edge triggered. Remember to enable[m
+[32m+[m[32m  // the INT2 and INT3 interrupts.[m
+[32m+[m[32m  // Hint: Check pages 110 and 111 in the ATmega2560 Datasheet.[m
+[32m+[m[32m  EICRA |= (1 << ISC21); // Set INT2 and INT3 to falling edge[m
+[32m+[m[32m  EICRA &= ~(1 << ISC20);[m
+[32m+[m[32m  EICRA |= (1 << ISC31);[m
+[32m+[m[32m  EICRA &= ~(1 << ISC30);[m
+[32m+[m[32m  EIMSK |= (1 << INT2) | (1 << INT3); // Enable INT2 and INT3 interrupts[m
+[32m+[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Implement the external interrupt ISRs below.[m
+[32m+[m[32m// INT3 ISR should call leftISR while INT2 ISR[m
+[32m+[m[32m// should call rightISR.[m
+[32m+[m
+[32m+[m[32mISR(INT2_vect) {[m
+[32m+[m[32m  rightISR();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mISR(INT3_vect){[m
+[32m+[m[32m  leftISR();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Implement INT2 and INT3 ISRs above.[m
+[32m+[m
+[32m+[m[32m/*[m
+[32m+[m[32m * Setup and start codes for serial communications[m
+[32m+[m[32m *[m[41m [m
+[32m+[m[32m */[m
+[32m+[m[32m// Set up the serial connection. For now we are using[m[41m [m
+[32m+[m[32m// Arduino Wiring, you will replace this later[m
+[32m+[m[32m// with bare-metal code.[m
+[32m+[m[32mvoid setupSerial()[m
+[32m+[m[32m{[m
+[32m+[m[32m  // To replace later with bare-metal.[m
+[32m+[m[32m  Serial.begin(9600);[m
+[32m+[m[32m  // Change Serial to Serial2/Serial3/Serial4 in later labs when using the other UARTs[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Start the serial connection. For now we are using[m
+[32m+[m[32m// Arduino wiring and this function is empty. We will[m
+[32m+[m[32m// replace this later with bare-metal code.[m
+[32m+[m
+[32m+[m[32mvoid startSerial()[m
+[32m+[m[32m{[m
+[32m+[m[32m  // Empty for now. To be replaced with bare-metal code[m
+[32m+[m[32m  // later on.[m
+[32m+[m[41m  [m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Read the serial port. Returns the read character in[m
+[32m+[m[32m// ch if available. Also returns TRUE if ch is valid.[m[41m [m
+[32m+[m[32m// This will be replaced later with bare-metal code.[m
+[32m+[m
+[32m+[m[32mint readSerial(char *buffer)[m
+[32m+[m[32m{[m
+[32m+[m
+[32m+[m[32m  int count=0;[m
+[32m+[m
+[32m+[m[32m  // Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs[m
+[32m+[m
+[32m+[m[32m  while(Serial.available())[m
+[32m+[m[32m    buffer[count++] = Serial.read();[m
+[32m+[m
+[32m+[m[32m  return count;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Write to the serial port. Replaced later with[m
+[32m+[m[32m// bare-metal code[m
+[32m+[m
+[32m+[m[32mvoid writeSerial(const char *buffer, int len)[m
+[32m+[m[32m{[m
+[32m+[m[32m  Serial.write(buffer, len);[m
+[32m+[m[32m  // Change Serial to Serial2/Serial3/Serial4 in later labs when using other UARTs[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m/*[m
+[32m+[m[32m * Alex's setup and run codes[m
+[32m+[m[32m *[m[41m [m
+[32m+[m[32m */[m
+[32m+[m
+[32m+[m[32m// Clears all our counters[m
+[32m+[m[32mvoid clearCounters()[m
+[32m+[m[32m{[m
+[32m+[m[32m  leftForwardTicks=0;[m
+[32m+[m[32m  rightForwardTicks=0;[m
+[32m+[m[32m  leftReverseTicks=0;[m
+[32m+[m[32m  rightReverseTicks=0;[m
+[32m+[m[32m  leftForwardTicksTurns=0;[m
+[32m+[m[32m  rightForwardTicksTurns=0;[m
+[32m+[m[32m  leftReverseTicksTurns=0;[m
+[32m+[m[32m  rightReverseTicksTurns=0;[m
+[32m+[m[32m  leftRevs=0;[m
+[32m+[m[32m  rightRevs=0;[m
+[32m+[m[32m  forwardDist=0;[m
+[32m+[m[32m  reverseDist=0;[m[41m [m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32m// Clears one particular counter[m
+[32m+[m[32mvoid clearOneCounter(int which)[m
+[32m+[m[32m{[m
+[32m+[m[32m  clearCounters();[m
+[32m+[m[32m}[m
+[32m+[m[32m// Intialize Alex's internal states[m
+[32m+[m
+[32m+[m[32mvoid initializeState()[m
+[32m+[m[32m{[m
+[32m+[m[32m  clearCounters();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid handleCommand(TPacket *command)[m
+[32m+[m[32m{[m
+[32m+[m[32m  switch(command->command)[m
+[32m+[m[32m  {[m
+[32m+[m[32m    // For movement commands, param[0] = distance, param[1] = speed.[m
+[32m+[m[32m    case COMMAND_FORWARD:[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        fforward((double) command->params[0], (float) command->params[1]);[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case COMMAND_REVERSE:[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        reverse((double) command->params[0], (float) command->params[1]);[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case COMMAND_TURN_LEFT:[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        left((double) command->params[0], (float) command->params[1]);[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case COMMAND_TURN_RIGHT:[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        right((double) command->params[0], (float) command->params[1]);[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case COMMAND_STOP:[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        stop();[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case COMMAND_GET_STATS:[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        sendStatus();[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case COMMAND_CLEAR_STATS:[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        clearOneCounter(command->params[0]);[m
+[32m+[m[32m      break;[m
+[32m+[m[41m      [m
+[32m+[m[32m    default:[m
+[32m+[m[32m      sendBadCommand();[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid waitForHello()[m
+[32m+[m[32m{[m
+[32m+[m[32m  int exit=0;[m
+[32m+[m
+[32m+[m[32m  while(!exit)[m
+[32m+[m[32m  {[m
+[32m+[m[32m    TPacket hello;[m
+[32m+[m[32m    TResult result;[m
+[32m+[m[41m    [m
+[32m+[m[32m    do[m
+[32m+[m[32m    {[m
+[32m+[m[32m      result = readPacket(&hello);[m
+[32m+[m[32m    } while (result == PACKET_INCOMPLETE);[m
+[32m+[m
+[32m+[m[32m    if(result == PACKET_OK)[m
+[32m+[m[32m    {[m
+[32m+[m[32m      if(hello.packetType == PACKET_TYPE_HELLO)[m
+[32m+[m[32m      {[m
+[32m+[m[32m        sendOK();[m
+[32m+[m[32m        exit=1;[m
+[32m+[m[32m      }[m
+[32m+[m[32m      else[m
+[32m+[m[32m        sendBadResponse();[m
+[32m+[m[32m    }[m
+[32m+[m[32m    else[m
+[32m+[m[32m      if(result == PACKET_BAD)[m
+[32m+[m[32m      {[m
+[32m+[m[32m        sendBadPacket();[m
+[32m+[m[32m      }[m
+[32m+[m[32m      else[m
+[32m+[m[32m        if(result == PACKET_CHECKSUM_BAD)[m
+[32m+[m[32m          sendBadChecksum();[m
+[32m+[m[32m  } // !exit[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid setup() {[m
+[32m+[m[32m  // put your setup code here, to run once:[m
+[32m+[m[32m  alexDiagonal = sqrt((ALEX_LENGTH * ALEX_LENGTH) + (ALEX_BREADTH * ALEX_BREADTH));[m
+[32m+[m[32m  alexCirc = PI * alexDiagonal;[m
+[32m+[m[32m  cli();[m
+[32m+[m[32m  setupEINT();[m
+[32m+[m[32m  setupSerial();[m
+[32m+[m[32m  startSerial();[m
+[32m+[m[32m  enablePullups();[m
+[32m+[m[32m  initializeState();[m
+[32m+[m[32m  sei();[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid handlePacket(TPacket *packet)[m
+[32m+[m[32m{[m
+[32m+[m[32m  switch(packet->packetType)[m
+[32m+[m[32m  {[m
+[32m+[m[32m    case PACKET_TYPE_COMMAND:[m
+[32m+[m[32m      handleCommand(packet);[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case PACKET_TYPE_RESPONSE:[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case PACKET_TYPE_ERROR:[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case PACKET_TYPE_MESSAGE:[m
+[32m+[m[32m      break;[m
+[32m+[m
+[32m+[m[32m    case PACKET_TYPE_HELLO:[m
+[32m+[m[32m      break;[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid loop() {[m
+[32m+[m[32m// Uncomment the code below for Step 2 of Activity 3 in Week 8 Studio 2[m
+[32m+[m
+[32m+[m[32m // forward(0, 100);[m
+[32m+[m
+[32m+[m[32m// Uncomment the code below for Week 9 Studio 2[m
+[32m+[m
+[32m+[m
+[32m+[m[32m // put your main code here, to run repeatedly:[m
+[32m+[m[32m  TPacket recvPacket; // This holds commands from the Pi[m
+[32m+[m
+[32m+[m[32m  TResult result = readPacket(&recvPacket); // Reads from serial port?[m
+[32m+[m[41m  [m
+[32m+[m[32m  if(result == PACKET_OK)[m
+[32m+[m[32m    handlePacket(&recvPacket);[m
+[32m+[m[32m  else[m
+[32m+[m[32m    if(result == PACKET_BAD)[m
+[32m+[m[32m    {[m
+[32m+[m[32m      sendBadPacket();[m
+[32m+[m[32m    }[m
+[32m+[m[32m    else[m
+[32m+[m[32m      if(result == PACKET_CHECKSUM_BAD)[m
+[32m+[m[32m      {[m
+[32m+[m[32m        sendBadChecksum();[m
+[32m+[m[32m      }[m[41m [m
+[32m+[m[41m  [m
+[32m+[m[32m  if(deltaDist > 0) {[m
+[32m+[m[32m    if(dir==FORWARD)[m
+[32m+[m[32m    {[m
+[32m+[m[32m      if(forwardDist > newDist)[m
+[32m+[m[32m      {[m
+[32m+[m[32m        deltaDist=0;[m
+[32m+[m[32m        newDist=0;[m
+[32m+[m[32m        stop();[m
+[32m+[m[32m      }[m
+[32m+[m[41m      [m
+[32m+[m[32m    }[m
+[32m+[m[32m    else[m
+[32m+[m[32m      if(dir == BACKWARD)[m
+[32m+[m[32m      {[m
+[32m+[m[32m        if(reverseDist > newDist)[m
+[32m+[m[32m        {[m
+[32m+[m[32m          deltaDist=0;[m
+[32m+[m[32m          newDist=0;[m
+[32m+[m[32m          stop();[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m      else[m
+[32m+[m[41m      [m
+[32m+[m[32m    if(dir == STOP)[m
+[32m+[m[32m    {[m
+[32m+[m[32m      deltaDist=0;[m
+[32m+[m[32m      newDist=0;[m
+[32m+[m[32m      stop();[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if(deltaTicks > 0) {[m
+[32m+[m[32m    if(dir==LEFT)[m
+[32m+[m[32m    {[m
+[32m+[m[32m      if(leftReverseTicksTurns >= targetTicks)[m
+[32m+[m[32m      {[m
+[32m+[m[32m        deltaTicks=0;[m
+[32m+[m[32m        targetTicks=0;[m
+[32m+[m[32m        stop();[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m    else[m
+[32m+[m[32m      if(dir == RIGHT)[m
+[32m+[m[32m      {[m
+[32m+[m[32m        if(rightReverseTicksTurns >= targetTicks)[m
+[32m+[m[32m        {[m
+[32m+[m[32m          deltaTicks=0;[m
+[32m+[m[32m          targetTicks=0;[m
+[32m+[m[32m          stop();[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m[32m      else[m
+[32m+[m[32m        if(dir == STOP)[m
+[32m+[m[32m        {[m
+[32m+[m[32m          deltaTicks=0;[m
+[32m+[m[32m          targetTicks=0;[m
+[32m+[m[32m          stop();[m
+[32m+[m[32m        }[m
+[32m+[m[32m  }[m
+[32m+[m[32m}[m
+[1mdiff --git a/constants.h b/constants.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..b2049f1[m
+[1m--- /dev/null[m
+[1m+++ b/constants.h[m
+[36m@@ -0,0 +1,63 @@[m
+[32m+[m[32m#ifndef __CONSTANTS_INC__[m
+[32m+[m[32m#define __CONSTANTS_INC__[m
+[32m+[m
+[32m+[m[32m/*[m[41m [m
+[32m+[m[32m *  This file containts all the packet types, commands[m
+[32m+[m[32m *  and status constants[m
+[32m+[m[32m *[m[41m  [m
+[32m+[m[32m */[m
+[32m+[m
+[32m+[m[32m// Packet types[m
+[32m+[m[32mtypedef enum[m
+[32m+[m[32m{[m
+[32m+[m[32m  PACKET_TYPE_COMMAND = 0,[m
+[32m+[m[32m  PACKET_TYPE_RESPONSE = 1,[m
+[32m+[m[32m  PACKET_TYPE_ERROR = 2,[m
+[32m+[m[32m  PACKET_TYPE_MESSAGE = 3,[m
+[32m+[m[32m  PACKET_TYPE_HELLO = 4[m
+[32m+[m[32m} TPacketType;[m
+[32m+[m
+[32m+[m[32m// Response types. This goes into the command field[m
+[32m+[m[32mtypedef enum[m
+[32m+[m[32m{[m
+[32m+[m[32m  RESP_OK = 0,[m
+[32m+[m[32m  RESP_STATUS=1,[m
+[32m+[m[32m  RESP_BAD_PACKET = 2,[m
+[32m+[m[32m  RESP_BAD_CHECKSUM = 3,[m
+[32m+[m[32m  RESP_BAD_COMMAND = 4,[m
+[32m+[m[32m  RESP_BAD_RESPONSE = 5[m[41m [m
+[32m+[m[32m} TResponseType;[m
+[32m+[m
+[32m+[m
+[32m+[m[32m// Commands[m
+[32m+[m[32m// For direction commands, param[0] = distance in cm to move[m
+[32m+[m[32m// param[1] = speed[m
+[32m+[m[32mtypedef enum[m
+[32m+[m[32m{[m
+[32m+[m[32m  COMMAND_FORWARD = 0,[m
+[32m+[m[32m  COMMAND_REVERSE = 1,[m
+[32m+[m[32m  COMMAND_TURN_LEFT = 2,[m
+[32m+[m[32m  COMMAND_TURN_RIGHT = 3,[m
+[32m+[m[32m  COMMAND_STOP = 4,[m
+[32m+[m[32m  COMMAND_GET_STATS = 5,[m
+[32m+[m[32m  COMMAND_CLEAR_STATS = 6[m
+[32m+[m[32m} TCommandType;[m
+[32m+[m
+[32m+[m[32mtypedef enum[m[41m [m
+[32m+[m[32m{[m
+[32m+[m[32m  FORWARD=1,[m
+[32m+[m[32m  BACKWARD=2,[m
+[32m+[m[32m  LEFT=3,[m
+[32m+[m[32m  RIGHT=4[m
+[32m+[m[32m} TDirection;[m
+[32m+[m
+[32m+[m[32m// Direction values[m
+[32m+[m[32mtypedef enum Tdir[m
+[32m+[m[32m{[m
+[32m+[m[32m  STOP,[m
+[32m+[m[32m  GO,[m
+[32m+[m[32m  BACK,[m
+[32m+[m[32m  CCW,[m
+[32m+[m[32m  CW[m
+[32m+[m[32m} Tdir;[m
+[32m+[m[32m#endif[m
+[1mdiff --git a/packet.h b/packet.h[m
+[1mnew file mode 100644[m
+[1mindex 0000000..10480f9[m
+[1m--- /dev/null[m
+[1m+++ b/packet.h[m
+[36m@@ -0,0 +1,19 @@[m
+[32m+[m[32m#ifndef __CONTROL_H__[m
+[32m+[m[32m#define __CONTROL_H__[m
+[32m+[m
+[32m+[m[32m#include <stdint.h>[m
+[32m+[m
+[32m+[m[32m#define MAX_STR_LEN   32[m
+[32m+[m[32m// This packet has 1 + 1 + 2 + 32 + 16 * 4 = 100 bytes[m
+[32m+[m[32mtypedef struct[m
+[32m+[m[32m{[m
+[32m+[m
+[32m+[m[32m  char packetType;[m
+[32m+[m[32m  char command;[m
+[32m+[m[32m  char dummy[2]; // Padding to make up 4 bytes[m
+[32m+[m[32m  char data[MAX_STR_LEN]; // String data[m
+[32m+[m[32m  uint32_t params[16];[m
+[32m+[m[32m} TPacket;[m
+[32m+[m
+[32m+[m
+[32m+[m[32m#endif[m
+[1mdiff --git a/robotlib.ino b/robotlib.ino[m
+[1mnew file mode 100644[m
+[1mindex 0000000..f27182a[m
+[1m--- /dev/null[m
+[1m+++ b/robotlib.ino[m
+[36m@@ -0,0 +1,85 @@[m
+[32m+[m[32m#include <AFMotor.h>[m
+[32m+[m
+[32m+[m[32m// Motor control[m
+[32m+[m[32m#define FRONT_LEFT   2 // M2 on the driver shield[m
+[32m+[m[32m#define FRONT_RIGHT  1 // M1 on the driver shield[m
+[32m+[m[32m#define BACK_LEFT    3 // M3 on the driver shield[m
+[32m+[m[32m#define BACK_RIGHT   4 // M4 on the driver shield[m
+[32m+[m
+[32m+[m[32mAF_DCMotor motorFL(FRONT_LEFT);[m
+[32m+[m[32mAF_DCMotor motorFR(FRONT_RIGHT);[m
+[32m+[m[32mAF_DCMotor motorBL(BACK_LEFT);[m
+[32m+[m[32mAF_DCMotor motorBR(BACK_RIGHT);[m
+[32m+[m
+[32m+[m[32mvoid move(float speed, int direction)[m
+[32m+[m[32m{[m
+[32m+[m[32m  int speed_scaled = (speed/100.0) * 255;[m
+[32m+[m[32m  motorFL.setSpeed(speed_scaled);[m
+[32m+[m[32m  motorFR.setSpeed(speed_scaled);[m
+[32m+[m[32m  motorBL.setSpeed(speed_scaled);[m
+[32m+[m[32m  motorBR.setSpeed(speed_scaled);[m
+[32m+[m
+[32m+[m[32m  switch(direction)[m
+[32m+[m[32m    {[m
+[32m+[m[32m      case BACK:[m
+[32m+[m[32m        motorFL.run(FORWARD);[m
+[32m+[m[32m        motorFR.run(BACKWARD);[m
+[32m+[m[32m        motorBL.run(FORWARD);[m
+[32m+[m[32m        motorBR.run(BACKWARD);[m[41m [m
+[32m+[m[32m      break;[m
+[32m+[m[32m      case GO:[m
+[32m+[m[32m        motorFL.run(BACKWARD);[m
+[32m+[m[32m        motorFR.run(FORWARD);[m
+[32m+[m[32m        motorBL.run(BACKWARD);[m
+[32m+[m[32m        motorBR.run(FORWARD);[m[41m [m
+[32m+[m[32m      break;[m
+[32m+[m[32m      case CW:[m
+[32m+[m[32m        motorFL.run(BACKWARD);[m
+[32m+[m[32m        motorFR.run(BACKWARD);[m
+[32m+[m[32m        motorBL.run(BACKWARD);[m
+[32m+[m[32m        motorBR.run(BACKWARD);[m[41m [m
+[32m+[m[32m      break;[m
+[32m+[m[32m      case CCW:[m
+[32m+[m[32m        motorFL.run(FORWARD);[m
+[32m+[m[32m        motorFR.run(FORWARD);[m
+[32m+[m[32m        motorBL.run(FORWARD);[m
+[32m+[m[32m        motorBR.run(FORWARD);[m[41m [m
+[32m+[m[32m      break;[m
+[32m+[m[32m      case STOP:[m
+[32m+[m[32m      default:[m
+[32m+[m[32m        motorFL.run(STOP);[m
+[32m+[m[32m        motorFR.run(STOP);[m
+[32m+[m[32m        motorBL.run(STOP);[m
+[32m+[m[32m        motorBR.run(STOP);[m[41m [m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid forward(float dist, float speed)[m
+[32m+[m[32m{[m
+[32m+[m[32m  dir = (TDirection) FORWARD;[m
+[32m+[m[32m  move(speed, FORWARD);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid backward(float dist, float speed)[m[41m  [m
+[32m+[m[32m{[m
+[32m+[m[32m  dir = (TDirection) BACKWARD;[m
+[32m+[m[32m  move(speed, BACKWARD);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid ccw(float dist, float speed)[m
+[32m+[m[32m{[m
+[32m+[m[32m  dir = (TDirection) LEFT;[m
+[32m+[m[32m  move(speed, LEFT); // check again (LEFT or CCW)[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid cw(float dist, float speed)[m
+[32m+[m[32m{[m
+[32m+[m[32m  dir = (TDirection) RIGHT;[m
+[32m+[m[32m  move(speed, RIGHT); // check again (RIGHT or CW)[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mvoid stop()[m
+[32m+[m[32m{[m
+[32m+[m[32m  dir = (TDirection) STOP;[m
+[32m+[m[32m  move(0, STOP);[m
+[32m+[m[32m}[m
