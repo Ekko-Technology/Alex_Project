@@ -13,14 +13,14 @@ OUTPUT="tls-alex-client"
 CXX=g++
 FLAGS="-pthread -lssl -lcrypto"
 
-echo "🔹 Compiling TLS Client..."
+echo "Compiling TLS Client..."
 $CXX $SRC_FILES $FLAGS -o $OUTPUT
 
 # Check if compilation was successful
 if [ $? -eq 0 ]; then
-    echo "✅ Compilation successful! Executable: $OUTPUT"
+    echo "Compilation successful! Executable: $OUTPUT"
 else
-    echo "❌ Compilation failed!"
+    echo "Compilation failed!"
 fi
 
 

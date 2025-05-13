@@ -36,7 +36,7 @@ void handleError(const char *buffer)
 			break;
 
 		default:
-			printf("PI IS CONFUSED!\n");
+			printf("PI IS COBNFUSED!\n");
 	}
 }
 
@@ -56,7 +56,52 @@ void handleStatus(const char *buffer)
 	printf("Right Reverse Ticks Turns:\t%d\n", data[7]);
 	printf("Forward Distance:\t\t%d\n", data[8]);
 	printf("Reverse Distance:\t\t%d\n", data[9]);
+	if (data[10]){
+		printf("Claw OPEN\n");
+	}
+	else{
+		printf("Claw CLOSED\n");
+	}
+	if(data[11]){
+		printf("Trapdoor CLOSED\n");
+	}
+	else{
+		printf("Trapdoor OPEN\n");
+	}
 	printf("\n---------------------------------------\n\n");
+}
+
+void handleUltrasonic(const char *buffer)
+{
+	int32_t data[16];
+	memcpy(data, &buffer[1], sizeof(data));
+	printf("Ultrasonic Distance: %d cm\n", data[0]);
+}
+
+void handleColour(const char *buffer)
+{
+	char colour = buffer[1];
+	if (colour == 'r')
+	{
+		printf("Colour Sensor: Red\n");
+	}
+	else if (colour == 'g')
+	{
+		printf("Colour Sensor: Green\n");
+	}
+	else if (colour == 'w')
+	{
+		printf("Colour Sensor: White\n");
+	}
+	else
+	{
+		printf("Unknown Colour Detected\n");
+	}
+	int32_t data[16];
+	memcpy(data, &buffer[2], sizeof(data));
+	printf("Red: %d\n", data[0]);
+	printf("Green: %d\n", data[1]);
+	printf("Blue: %d\n", data[2]);
 }
 
 void handleMessage(const char *buffer)
@@ -69,6 +114,17 @@ void handleCommand(const char *buffer)
 	// We don't do anything because we issue commands
 	// but we don't get them. Put this here
 	// for future expansion
+	switch(buffer[1]){
+		case NET_COLOUR:
+			printf("Colour Sensor Data: %d\n", *(int32_t *)&buffer[2]);
+			break;
+		case NET_ULTRASONIC:
+			handleUltrasonic(buffer);
+			break;
+		default:
+			printf("Unknown command from server: %d\n", buffer[1]);
+			break;
+	}	
 }
 
 void handleNetwork(const char *buffer, int len)
@@ -93,6 +149,14 @@ void handleNetwork(const char *buffer, int len)
 		case NET_COMMAND_PACKET:
 		handleCommand(buffer);
 		break;
+
+		case NET_ULTRASONIC:
+		handleUltrasonic(buffer);
+		break;
+
+		case NET_COLOUR:
+		handleColour(buffer);
+		break;
 	}
 }
 
@@ -108,6 +172,29 @@ void sendData(void *conn, const char *buffer, int len)
 		/* END TODO */	
 		networkActive = (c > 0);
 	}
+}
+void receiveData(void *conn, char *buffer, int bufferSize)
+{
+    int bytesRead;
+    printf("\nWAITING TO RECEIVE DATA...\n\n");
+
+    if (networkActive)
+    {
+        /* TODO: Insert SSL read here to read data i				 buffer */
+        bytesRead = sslRead(conn, buffer, bufferSize);
+
+        /* END TODO */
+        if (bytesRead > 0)
+        {
+            printf("RECEIVED %d BYTES DATA\n\n", bytesRead);
+            handleNetwork(buffer, bytesRead); // Process the received data
+        }
+        else
+        {
+            printf("FAILED TO RECEIVE DATA OR CONNECTION CLOSED\n");
+            networkActive = 0; // Mark the network as inactive
+        }
+    }
 }
 
 void *readerThread(void *conn)
@@ -149,8 +236,10 @@ void flushInput()
 
 void getParams(int32_t *params)
 {
-	printf("Enter Distance/Angle in cm/degrees and Power in %%.\n");
-	scanf("%d %d", &params[0], &params[1]);
+	printf("Enter Angle in degrees in %%.\n");
+	do{
+		scanf("%d", &params[0]);
+	} while(params[0] < 20 || params[0] > 220);
 	flushInput();
 }
 
@@ -158,8 +247,10 @@ void print_control_table(){
   printf("+------------------+--------------------+\n");
   printf("| Key              | Action             |\n");
   printf("+------------------+--------------------+\n");
-  printf("| W                | Forward            |\n");
-  printf("| S                | Reverse            |\n");
+  printf("| W                | Forward (Short)    |\n");
+  printf("| S                | Reverse (Short)    |\n");
+  printf("| P                | Forward (Long)     |\n");
+  printf("| L                | Reverse (Long)     |\n");
   printf("| A                | Left               |\n");
   printf("| D                | Right              |\n");
   printf("| T                | E-Stop             |\n");
@@ -167,6 +258,7 @@ void print_control_table(){
   printf("| X                | Colour Detection   |\n");
   printf("| M                | Control Arm        |\n");
   printf("| U                | Front Distance     |\n");
+  printf("| J                | Open Trapdoor      |\n");
   printf("+------------------+--------------------+\n");
   printf("| C                | Clear Stats        |\n");
   printf("| G                | Get Stats          |\n");
@@ -181,44 +273,63 @@ void *writerThread(void *conn)
 	while(!quit)
 	{
 		char ch;
-    print_control_table();
+    	print_control_table();
 		scanf("%c", &ch);
-    ch = tolower(ch);
+    	ch = tolower(ch);
 
 		// Purge extraneous characters from input stream
 		flushInput();
 
 		char buffer[10];
-		int32_t params[2];
+		int32_t params[] = {0,0};
 
 		buffer[0] = NET_COMMAND_PACKET;
 		switch(ch)
 		{
-      //Motor
+      		//Motor
 			case 'w':
 			case 's':
+			case 'p':
+			case 'l':
+				buffer[1] = ch;
+				memcpy(&buffer[2], params, sizeof(params));
+				sendData(conn, buffer, sizeof(buffer));
+				break;
 			case 'a':
 			case 'd':
-						getParams(params);
-						buffer[1] = ch;
-						memcpy(&buffer[2], params, sizeof(params));
-						sendData(conn, buffer, sizeof(buffer));
-						break;
-      // Colour Sensor
-      case 'x':
-      //Arm Control
-      case 'm':
-      // Ultrasonic Distance
-      case 'u':
+				getParams(params);
+				if (ch == 'd'){
+					params[0] = params[0]*0.66667; // Convert to ticks
+				}
+				buffer[1] = ch;
+				memcpy(&buffer[2], params, sizeof(params));
+				sendData(conn, buffer, sizeof(buffer));
+				break;
+			
+			case 'x': // Color Detection
+			{
+				buffer[1] = ch; // Command for color sensor
+				memcpy(&buffer[2], params, sizeof(params));
+				sendData(conn, buffer, sizeof(buffer)); // Send the request
+				break;
+			}
+			case 'u': // Ultrasonic Distance
+			{
+				buffer[1] = ch; // Command for ultrasonic sensor
+				memcpy(&buffer[2], params, sizeof(params));
+				sendData(conn, buffer, sizeof(buffer)); // Send the request
+				break;
+			}
+			//Arm Control
+			case 'm':
+			case 'j':
 			case 't':
 			case 'c':
 			case 'g':
-					params[0]=0;
-					params[1]=0;
-					memcpy(&buffer[2], params, sizeof(params));
-					buffer[1] = ch;
-					sendData(conn, buffer, sizeof(buffer));
-					break;
+				memcpy(&buffer[2], params, sizeof(params));
+				buffer[1] = ch;
+				sendData(conn, buffer, sizeof(buffer));
+				break;
 			case 'q':
 				quit=1;
 				break;
@@ -239,11 +350,11 @@ void *writerThread(void *conn)
 
 /* TODO: #define filenames for the client private key, certificatea,
    CA filename, etc. that you need to create a client */
-#define SERVER_NAME "192.168.255.238"
-#define CA_CERT_FNAME "signing.pem"
+#define SERVER_NAME "192.168.178.239"
+#define CA_CERT_FNAME "TLS-client-lib/signing.pem"
 #define PORT_NUM 5001
-#define CLIENT_CERT_FNAME "laptop.crt"
-#define CLIENT_KEY_FNAME "laptop.key"
+#define CLIENT_CERT_FNAME "TLS-client-lib/laptop.crt"
+#define CLIENT_KEY_FNAME "TLS-client-lib/laptop.key"
 #define SERVER_NAME_ON_CERT "epp_pi.com"
 
 /* END TODO */
