@@ -1,9 +1,9 @@
-by using this you basically admit we are kinda the goats
--
-joshua yeo wee tze from rc4 "\n"
-sid from pioneer 
-vetri from off campus
-shao ann from clementi
+ALEX Project
+AY 2024/25 Sem 2
+Done by
+Joshua Yeo Wee Tze
+Rajeshprabu Sidharth
+Karthikeyan Vetrivel
+Gao Shao Ann
 
-yurrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
-fk the newline didnt work
+Sid and Vetri will be TAing this mod the upcoming sem (AY 25/26), feel free to ask doubts and whatnot
