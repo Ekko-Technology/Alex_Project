@@ -6,4 +6,5 @@ Rajeshprabu Sidharth
 Karthikeyan Vetrivel
 Gao Shao Ann
 
-Sid and Vetri will be TAing this mod the upcoming sem (AY 25/26), feel free to ask doubts and whatnot
+Sid and Vetri will be TAing this mod the upcoming sem (AY 25/26)
+
